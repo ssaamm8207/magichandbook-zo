@@ -673,17 +673,46 @@ body.no-intro .hint{ opacity:.6; }
    RESPONSIVE
    ============================================================ */
 @media (max-width:760px){
-  .stage{ width:96vw; perspective:1600px; }
-  .book{ aspect-ratio:5 / 7; transform:none; }
+  .stage{ width:min(92vw, 62dvh); perspective:none; }
+  .book{ aspect-ratio:5 / 7; transform:none; transition:none; }
   .book.is-open{ transform:none; }
   .book__base,.gutter{ display:none; }
-  .leaf{ width:100%; transition:transform .55s var(--ease-book), opacity .45s ease; }
-  .leaf.flipped{ transform:translateX(-12%) rotateY(0); opacity:0; pointer-events:none; }
-  .face{ border-radius:6px; }
-  .face--back{ transform:none; opacity:0; pointer-events:none; }
+
+  /* single-page mode: every face becomes its own swipeable sheet */
+  .msheet{
+    position:absolute; inset:0;
+    transition:transform .5s var(--ease-book), opacity .42s ease;
+    will-change:transform, opacity;
+  }
+  .msheet .face{
+    position:absolute; inset:0; transform:none;
+    border-radius:10px; box-shadow:var(--shadow-page);
+  }
+  .msheet .face--back{ transform:none; }
+  .msheet.m-prev{ transform:translateX(-16%) scale(.97); opacity:0; pointer-events:none; }
+  .msheet.m-next{ transform:translateX(16%) scale(.97);  opacity:0; pointer-events:none; }
+  .msheet.m-curr{ transform:none; opacity:1; }
+
+  /* re-balance verso-designed paddings for full-width display */
+  .cphoto{ padding:9%; }
+  .sigil-page{ padding:14%; }
+  .face--back .page::before{ display:none; }
+  .face--front .page::before{ display:none; }
+  .cover .clasp{ display:none; }
+  .corner{ width:64px; height:64px; }
+
+  /* swipe hint */
+  .hint{ font-size:11px; padding:0 20px; }
+  .progress{ max-width:64vw; gap:8px; }
+  .progress .dot{ width:7px; height:7px; }
+  .nav-btn{ width:46px; height:46px; }
+
   .adm-2col{ grid-template-columns:1fr; }
   .adm{ padding:26px 22px; }
-  .progress{ max-width:40vw; }
+
+  /* intro on small screens */
+  #env{ transform-origin:center; }
+  #intro-skip{ bottom:18px; right:16px; }
 }
 
 /* ============================================================
@@ -693,7 +722,9 @@ body.no-intro .hint{ opacity:.6; }
   *{ animation:none !important; }
   .book,.leaf,.book__base .endpaper,.gutter{ transition:opacity .25s linear !important; }
   .leaf.flipped{ transform:none; opacity:0; pointer-events:none; }
-  .face--back{ display:none; }
+  .leaf .face--back{ display:none; }
+  .msheet .face--back{ display:block; }
+  .msheet{ transition:opacity .25s linear !important; }
   .embers{ display:none; }
   #intro{ display:none !important; }
   body .book{ opacity:1 !important; }
@@ -1225,9 +1256,12 @@ function colophonFace(){
   +'</div>';
 }
 
+var mobileMq = window.matchMedia('(max-width:760px)');
+function isMobile(){ return mobileMq.matches; }
+
 function renderBook(){
   var book = document.getElementById('book');
-  Array.prototype.slice.call(book.querySelectorAll('.leaf')).forEach(function(l){ l.remove(); });
+  Array.prototype.slice.call(book.querySelectorAll('.leaf, .msheet')).forEach(function(l){ l.remove(); });
 
   /* build face sequence, then pair into leaves */
   var fronts = [coverFace(), venueFace()];
@@ -1237,10 +1271,23 @@ function renderBook(){
     fronts.push(textFace(c, i));
   });
   backs.push(colophonFace());
-  /* leaves = fronts.length === backs.length */
+
   var html = '';
-  for(var i = 0; i < fronts.length; i++){
-    html += '<div class="leaf" data-leaf="'+i+'">' + fronts[i] + backs[i] + '</div>';
+  if(isMobile()){
+    /* mobile: flatten every face into its own swipeable sheet, reading order */
+    var faces = [];
+    for(var f = 0; f < fronts.length; f++){
+      faces.push(fronts[f]);
+      faces.push(backs[f]);
+    }
+    faces.forEach(function(face, i){
+      html += '<div class="msheet" data-sheet="'+i+'">' + face + '</div>';
+    });
+  } else {
+    /* desktop: leaves = fronts.length === backs.length */
+    for(var i = 0; i < fronts.length; i++){
+      html += '<div class="leaf" data-leaf="'+i+'">' + fronts[i] + backs[i] + '</div>';
+    }
   }
   var tmp = document.createElement('div');
   tmp.innerHTML = html;
@@ -1270,15 +1317,20 @@ function initBook(){
   var hint = document.getElementById('hint');
   var turned = 0, leaves = [], dots = [];
 
-  function refresh(){ leaves = Array.prototype.slice.call(book.querySelectorAll('.leaf')); }
+  function refresh(){
+    leaves = Array.prototype.slice.call(book.querySelectorAll(isMobile() ? '.msheet' : '.leaf'));
+  }
   refresh();
+
+  /* max value "turned" may take (desktop: n leaves flipped; mobile: last page index) */
+  function maxTurn(){ return isMobile() ? leaves.length - 1 : leaves.length; }
 
   function buildDots(){
     progressEl.innerHTML = ''; dots = [];
-    for(var s = 0; s <= leaves.length; s++){
+    for(var s = 0; s <= maxTurn(); s++){
       var d = document.createElement('button');
       d.className = 'dot'; d.setAttribute('role','tab');
-      d.setAttribute('aria-label', s === 0 ? '封面' : '第 '+s+' 跨頁');
+      d.setAttribute('aria-label', s === 0 ? '封面' : (isMobile() ? '第 '+(s+1)+' 頁' : '第 '+s+' 跨頁'));
       (function(t){ d.addEventListener('click', function(){ goTo(t); }); })(s);
       progressEl.appendChild(d); dots.push(d);
     }
@@ -1288,40 +1340,84 @@ function initBook(){
   function render(){
     refresh();
     var n = leaves.length;
-    leaves.forEach(function(leaf, i){
-      var flipped = i < turned;
-      leaf.classList.toggle('flipped', flipped);
-      leaf.style.zIndex = flipped ? String(i) : String(n - i);
-      var live = (i === turned) || (i === turned - 1);
-      try{ leaf.inert = !live; }catch(e){}
-      leaf.setAttribute('aria-hidden', live ? 'false' : 'true');
-    });
-    book.classList.toggle('is-open', turned > 0);
+    if(isMobile()){
+      /* single-page slide mode */
+      leaves.forEach(function(sheet, i){
+        sheet.classList.toggle('m-prev', i < turned);
+        sheet.classList.toggle('m-curr', i === turned);
+        sheet.classList.toggle('m-next', i > turned);
+        sheet.style.zIndex = (i === turned) ? '30' : (i < turned ? '10' : String(20 - Math.min(i - turned, 9)));
+        var live = (i === turned);
+        try{ sheet.inert = !live; }catch(e){}
+        sheet.setAttribute('aria-hidden', live ? 'false' : 'true');
+      });
+      book.classList.toggle('is-open', turned > 0);
+      hint.textContent = turned === 0
+        ? '點擊封面或左右滑動開啟名冊'
+        : (turned === maxTurn() ? '名冊的最後一頁 — 感謝翻閱' : '左右滑動或使用按鈕翻頁');
+    } else {
+      /* desktop 3D flip mode */
+      leaves.forEach(function(leaf, i){
+        var flipped = i < turned;
+        leaf.classList.toggle('flipped', flipped);
+        leaf.style.zIndex = flipped ? String(i) : String(n - i);
+        var live = (i === turned) || (i === turned - 1);
+        try{ leaf.inert = !live; }catch(e){}
+        leaf.setAttribute('aria-hidden', live ? 'false' : 'true');
+      });
+      book.classList.toggle('is-open', turned > 0);
+      hint.textContent = turned === 0
+        ? '點擊封面 — 或使用方向鍵 — 開啟名冊'
+        : (turned === maxTurn() ? '名冊的最後一頁 — 感謝翻閱'
+                        : '使用 ← → 方向鍵、圓點、或點擊頁角翻頁');
+    }
     prevBtn.disabled = (turned === 0);
-    nextBtn.disabled = (turned === n);
+    nextBtn.disabled = (turned === maxTurn());
     dots.forEach(function(d, idx){
       var on = idx === turned;
       d.classList.toggle('active', on);
       d.setAttribute('aria-selected', on ? 'true' : 'false');
     });
-    hint.textContent = turned === 0
-      ? '點擊封面 — 或使用方向鍵 — 開啟名冊'
-      : (turned === n ? '名冊的最後一頁 — 感謝翻閱'
-                      : '使用 ← → 方向鍵、圓點、或點擊頁角翻頁');
   }
 
-  function next(){ if(turned < leaves.length){ turned++; render(); } }
+  function next(){ if(turned < maxTurn()){ turned++; render(); } }
   function prev(){ if(turned > 0){ turned--; render(); } }
-  function goTo(n){ turned = Math.max(0, Math.min(leaves.length, n)); render(); }
+  function goTo(n){ turned = Math.max(0, Math.min(maxTurn(), n)); render(); }
+
+  /* TOC targets are desktop spread numbers; translate for mobile page indices */
+  function gotoTarget(g){
+    if(!isMobile()) return g;
+    if(g <= 1) return 2;            /* venue page */
+    return 3 + 2 * (g - 2);         /* company (g-2) photo page */
+  }
 
   nextBtn.addEventListener('click', next);
   prevBtn.addEventListener('click', prev);
   book.addEventListener('click', function(e){
     var g = e.target.closest('[data-goto]');
-    if(g){ goTo(parseInt(g.getAttribute('data-goto'),10)); return; }
+    if(g){ goTo(gotoTarget(parseInt(g.getAttribute('data-goto'),10))); return; }
     if(e.target.closest('[data-next]')) next();
     else if(turned === 0 && e.target.closest('.cover')) next();
   });
+
+  /* ---- touch swipe (mobile & touch screens) ---- */
+  var tX = 0, tY = 0, tOn = false;
+  document.addEventListener('touchstart', function(e){
+    if(document.getElementById('admin').classList.contains('on')) return;
+    if(document.body.classList.contains('intro-active')) return;
+    if(e.touches.length !== 1) return;
+    tX = e.touches[0].clientX; tY = e.touches[0].clientY; tOn = true;
+  }, { passive:true });
+  document.addEventListener('touchend', function(e){
+    if(!tOn) return; tOn = false;
+    if(document.getElementById('admin').classList.contains('on')) return;
+    if(document.body.classList.contains('intro-active')) return;
+    var dx = e.changedTouches[0].clientX - tX;
+    var dy = e.changedTouches[0].clientY - tY;
+    if(Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.4){
+      if(dx < 0) next(); else prev();
+    }
+  }, { passive:true });
   document.addEventListener('keydown', function(e){
     if(document.getElementById('admin').classList.contains('on')) return;
     if(document.body.classList.contains('intro-active')) return;
@@ -1333,10 +1429,21 @@ function initBook(){
 
   render();
 
+  /* rebuild when crossing the mobile/desktop breakpoint (e.g. rotating the phone) */
+  var wasMobile = isMobile();
+  function onMqChange(){
+    if(isMobile() === wasMobile) return;
+    wasMobile = isMobile();
+    turned = 0;              /* layouts differ; restart from the cover */
+    bookApi.rebuild();
+  }
+  if(mobileMq.addEventListener) mobileMq.addEventListener('change', onMqChange);
+  else if(mobileMq.addListener) mobileMq.addListener(onMqChange);
+
   bookApi.rebuild = function(){
     var t = turned;
     renderBook(); refresh(); buildDots();
-    turned = Math.min(t, leaves.length);
+    turned = Math.min(t, maxTurn());
     render();
   };
 }
@@ -1442,7 +1549,9 @@ function runIntro(){
   }
 
   function measureCoverRect(){
-    return document.querySelector('.leaf[data-leaf="0"] .face--front').getBoundingClientRect();
+    /* works in both modes: desktop leaf face or mobile sheet face */
+    var el = document.querySelector('#book .cover');
+    return (el || document.getElementById('book')).getBoundingClientRect();
   }
 
   function tick(ts){
