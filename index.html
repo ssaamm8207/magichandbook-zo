@@ -1031,8 +1031,8 @@ var EMBEDDED = {
   "venue": {
     "eventName": "【活動名稱 — 請在編輯器修改】",
     "date": "【日期時間 — 例：2026 年 8 月 15 日（六）10:00 – 17:00】",
-    "address": "【333 タピオカ専門店 大島店\n6 Chome-12-6 Kitasuna, Koto City, Tokyo 136-0073日本】",
-    "mapUrl": "https://maps.app.goo.gl/pitADiFExiuhpeSx6",
+    "address": "【南港展覽館\n115臺北市南港區三重里經貿二路1號】",
+    "mapUrl": "https://maps.app.goo.gl/1HzuARJZM4U9EWio9",
     "transports": [
       {
         "mode": "捷運",
@@ -1078,23 +1078,11 @@ var EMBEDDED = {
       "tagline": "",
       "image": "https://dailyview.tw/_next/image?url=https%3A%2F%2F2024-dailyview.s3.ap-northeast-1.amazonaws.com%2FContent%2FUpload%2FPopular%2FImages%2F2024-03%2F7eed0172-b049-4f48-9e78-fa8128723a9b_m.jpg&w=1920&q=75",
       "imageAlt": "記憶卡挖",
-      "description": "我們是記憶卡哇，我們是美光的戰隊。",
+      "description": "《吉伊卡哇》以幾位個性鮮明的主角為核心，陪伴許多粉絲度過日常生活：吉伊卡哇（Chiikawa）： 作品主角，是一隻圓滾滾的白色小生物（原型常被認為是倉鼠）。個性內向、膽小且愛哭，但非常善良，為了朋友願意鼓起勇氣。小八貓（Hachiware）： 吉伊卡哇的最好朋友，頭上有獨特的八字形瀏海。個性開朗外向，擅長說話，經常擔任吉伊卡哇的「翻譯官」，總是貼心照顧他人。烏薩奇（Usagi / 兔兔）： 活力充沛的兔子，常發出「嗚呀咿哈——」的經典叫聲。個性古靈精怪、精力旺盛，戰鬥力極強，是三人組中的「智囊」與開心果。",
       "website": "https://chiikawa-wallpaper.com/zh-Hant",
       "contact": "0909099099",
       "booth": "A-8",
       "textSize": "s"
-    },
-    {
-      "name": "333 タピオカ専門店 大島店",
-      "category": "帥哥店",
-      "tagline": "我草快來喝飲料",
-      "image": "https://tb-static.uber.com/prod/image-proc/processed_images/e2972e9cbd7d00f68731668b523d94ef/9c4d3adb393f25706b737484dc73677e.jpeg",
-      "imageAlt": "333",
-      "description": "Contact the store directly ONLY concerning allergen information: store phone number: 07031973377 . / Note: Please contact Uber Eats Support in regards to any issues with your ongoing order. / For disclosure of merchant information in regards to the Specified Commercial Transaction Act Article 11, please contact the store or Uber Eats Support. We will be able to disclose the following information if requested: \"Legal Entity Name\", \"Representative Name (Corporate only)\", \"Legal Entity Address\" ,\"Phone Number\". For additional information please refer here.",
-      "website": "https://www.zohanlin.com/",
-      "contact": "0903152429",
-      "booth": "A8",
-      "textSize": ""
     }
   ]
 };
@@ -1977,6 +1965,44 @@ initAdmin();
 runIntro();
 
 })();
+</script>
+<!-- Code injected by live-server -->
+<script>
+	// <![CDATA[  <-- For SVG support
+	if ('WebSocket' in window) {
+		(function () {
+			function refreshCSS() {
+				var sheets = [].slice.call(document.getElementsByTagName("link"));
+				var head = document.getElementsByTagName("head")[0];
+				for (var i = 0; i < sheets.length; ++i) {
+					var elem = sheets[i];
+					var parent = elem.parentElement || head;
+					parent.removeChild(elem);
+					var rel = elem.rel;
+					if (elem.href && typeof rel != "string" || rel.length == 0 || rel.toLowerCase() == "stylesheet") {
+						var url = elem.href.replace(/(&|\?)_cacheOverride=\d+/, '');
+						elem.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cacheOverride=' + (new Date().valueOf());
+					}
+					parent.appendChild(elem);
+				}
+			}
+			var protocol = window.location.protocol === 'http:' ? 'ws://' : 'wss://';
+			var address = protocol + window.location.host + window.location.pathname + '/ws';
+			var socket = new WebSocket(address);
+			socket.onmessage = function (msg) {
+				if (msg.data == 'reload') window.location.reload();
+				else if (msg.data == 'refreshcss') refreshCSS();
+			};
+			if (sessionStorage && !sessionStorage.getItem('IsThisFirstTime_Log_From_LiveServer')) {
+				console.log('Live reload enabled.');
+				sessionStorage.setItem('IsThisFirstTime_Log_From_LiveServer', true);
+			}
+		})();
+	}
+	else {
+		console.error('Upgrade your browser. This Browser is NOT supported WebSocket for Live-Reloading.');
+	}
+	// ]]>
 </script>
 </body>
 </html>
