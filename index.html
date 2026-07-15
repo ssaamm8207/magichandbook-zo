@@ -129,7 +129,11 @@ body.intro-handoff .book{ opacity:1; }
   border-radius:6px 2px 2px 6px;
   box-shadow:var(--shadow-page);
   overflow:hidden;
+  /* hidden while the book is closed — only revealed once a page is turned */
+  opacity:0;
+  transition:opacity .55s ease .4s;
 }
+.book.is-open .book__base{ opacity:1; }
 .book__base .endpaper{ position:absolute; inset:0; opacity:0; transition:opacity .7s ease .25s; }
 .book.is-open .book__base .endpaper{ opacity:1; }
 
@@ -208,6 +212,27 @@ body.intro-handoff .book{ opacity:1; }
   box-shadow:0 3px 8px rgba(0,0,0,.55), inset 0 1px 1px rgba(255,255,255,.4); z-index:5; }
 .cover .clasp::after{ content:""; position:absolute; inset:8px 9px; border-radius:3px;
   background:radial-gradient(circle at 50% 35%, #7a2230, #3a0f16); box-shadow:inset 0 0 4px rgba(0,0,0,.6); }
+
+/* custom uploaded cover image mode */
+.cover.cover--img{ padding:0; }
+.cover.cover--img .coverimg{
+  position:absolute; inset:0; width:100%; height:100%;
+  object-fit:cover; display:block;
+}
+.cover.cover--img::after{
+  content:""; position:absolute; inset:0; pointer-events:none;
+  box-shadow:inset 0 0 60px rgba(0,0,0,.45), inset 0 0 0 2px rgba(0,0,0,.3);
+}
+.cover.cover--img .frame,
+.cover.cover--img .sigil,
+.cover.cover--img .kicker,
+.cover.cover--img h1,
+.cover.cover--img .filet,
+.cover.cover--img .author{ display:none; }
+#flybook .fb-coverimg{
+  position:absolute; inset:0; width:100%; height:100%;
+  object-fit:cover; display:block; border-radius:inherit; z-index:2;
+}
 
 /* ---------- TOC page ---------- */
 .toc{ display:flex; flex-direction:column; height:100%; padding:9% 10% 8% 10%; }
@@ -428,6 +453,15 @@ body.no-intro .hint{ opacity:.6; }
 
 #ptx{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
 
+/* video intro layers (A: entry / B: idle loop / C: transition) */
+#vstack{ position:absolute; inset:0; cursor:pointer; }
+.vlayer{
+  position:absolute; inset:0; width:100%; height:100%;
+  object-fit:cover; opacity:0;
+  transition:opacity .28s ease;
+  pointer-events:none;
+}
+
 #env{
   position:absolute; top:0; left:0; width:260px; height:182px;
   will-change:transform,opacity; opacity:0; cursor:pointer;
@@ -535,7 +569,7 @@ body.no-intro .hint{ opacity:.6; }
 .adm-lock svg{ width:13px; height:13px; stroke:currentColor; fill:none; stroke-width:1.6; }
 .adm-lock:hover{ background:rgba(193,154,69,.2); color:#fff3df; border-color:var(--gold); }
 
-.adm-tabs{ display:flex; gap:8px; margin-bottom:26px; }
+.adm-tabs{ display:flex; gap:8px; margin-bottom:26px; flex-wrap:wrap; }
 .adm-tab{
   flex:1; font-family:var(--font-caps); letter-spacing:.14em; text-transform:uppercase;
   font-size:11px; color:#b7a074; cursor:pointer; padding:11px 8px; border-radius:8px;
@@ -840,6 +874,7 @@ body.no-intro .hint{ opacity:.6; }
       <button class="adm-tab on" data-pane="pane-companies" role="tab">合作公司</button>
       <button class="adm-tab" data-pane="pane-venue" role="tab">會場資訊</button>
       <button class="adm-tab" data-pane="pane-type" role="tab">版面字體</button>
+      <button class="adm-tab" data-pane="pane-intro" role="tab">進場動畫</button>
       <button class="adm-tab" data-pane="pane-deploy" role="tab">匯出部署</button>
     </div>
 
@@ -970,6 +1005,45 @@ body.no-intro .hint{ opacity:.6; }
           </div>
         </div>
       </div>
+      <div class="adm-sec">
+        <h3>書本封面圖片</h3>
+        <div class="adm-grid">
+          <label>封面圖片路徑 <small>直式圖片（建議比例 5:7，如 1000×1400px）；留空 = 使用內建燙金皮革封面</small>
+            <input type="url" id="s-cover" placeholder="assets/cover.png 或 https://..." />
+          </label>
+          <button class="adm-btn" id="s-cover-save">套用封面</button>
+        </div>
+        <p class="adm-note">
+          把 PNG / JPG / WebP 放進 index.html 旁的 <code>assets/</code> 資料夾，填相對路徑（例：<code>assets/cover.png</code>）<br>
+          進場動畫飛出的小書會自動同步成同一張封面 · 圖片載入失敗時自動退回內建封面
+        </p>
+      </div>
+    </div>
+
+    <!-- ===== intro video pane ===== -->
+    <div class="adm-pane" id="pane-intro">
+      <div class="adm-sec">
+        <h3>自訂影片進場動畫（三段式）</h3>
+        <div class="adm-grid">
+          <label>影片 A — 開場動畫 <small>載入後自動播放一次（例：信封飛入）</small>
+            <input type="url" id="i-a" placeholder="assets/intro-a.webm 或 https://..." />
+          </label>
+          <label>影片 B — 等待循環 <small>A 播完後無縫循環，等待訪客點擊（例：信封發光呼吸）</small>
+            <input type="url" id="i-b" placeholder="assets/intro-b.webm 或 https://..." />
+          </label>
+          <label>影片 C — 點擊過場 <small>訪客點擊後播放一次，播完自動進入書本（例：信封打開、書飛出）</small>
+            <input type="url" id="i-c" placeholder="assets/intro-c.webm 或 https://..." />
+          </label>
+          <button class="adm-btn" id="i-save">儲存進場動畫設定</button>
+        </div>
+        <p class="adm-note">
+          · 格式建議 <strong>WebM（VP9）</strong> 或 MP4，影片會被靜音自動播放（手機相容）<br>
+          · <strong>三段影片留空 = 使用內建的信封動畫</strong>（目前的效果）<br>
+          · 無縫訣竅：A 的最後一格 = B 的第一格 = B 的最後一格 = C 的第一格<br>
+          · 檔案放在 index.html 旁的 <code>assets/</code> 資料夾，填相對路徑即可一起部署<br>
+          · 儲存後<strong>重新整理頁面</strong>才會看到新的進場動畫
+        </p>
+      </div>
     </div>
 
     <!-- ===== deploy pane ===== -->
@@ -1019,7 +1093,8 @@ var EMBEDDED = {
     "kicker": "Codex of Partners · Vol. I",
     "titleEn": "The Alliance Grimoire",
     "titleZh": "合作夥伴名冊",
-    "author": "謹以此冊，致每一位同行的夥伴"
+    "author": "謹以此冊，致每一位同行的夥伴",
+    "coverImage": ""
   },
   "typography": {
     "font": "serif",
@@ -1028,11 +1103,16 @@ var EMBEDDED = {
     "lineHeight": 1.45,
     "align": "left"
   },
+  "intro": {
+    "videoA": "",
+    "videoB": "",
+    "videoC": ""
+  },
   "venue": {
     "eventName": "【活動名稱 — 請在編輯器修改】",
     "date": "【日期時間 — 例：2026 年 8 月 15 日（六）10:00 – 17:00】",
-    "address": "【南港展覽館\n115臺北市南港區三重里經貿二路1號】",
-    "mapUrl": "https://maps.app.goo.gl/1HzuARJZM4U9EWio9",
+    "address": "【333 タピオカ専門店 大島店\n6 Chome-12-6 Kitasuna, Koto City, Tokyo 136-0073日本】",
+    "mapUrl": "https://maps.app.goo.gl/pitADiFExiuhpeSx6",
     "transports": [
       {
         "mode": "捷運",
@@ -1078,11 +1158,23 @@ var EMBEDDED = {
       "tagline": "",
       "image": "https://dailyview.tw/_next/image?url=https%3A%2F%2F2024-dailyview.s3.ap-northeast-1.amazonaws.com%2FContent%2FUpload%2FPopular%2FImages%2F2024-03%2F7eed0172-b049-4f48-9e78-fa8128723a9b_m.jpg&w=1920&q=75",
       "imageAlt": "記憶卡挖",
-      "description": "《吉伊卡哇》以幾位個性鮮明的主角為核心，陪伴許多粉絲度過日常生活：吉伊卡哇（Chiikawa）： 作品主角，是一隻圓滾滾的白色小生物（原型常被認為是倉鼠）。個性內向、膽小且愛哭，但非常善良，為了朋友願意鼓起勇氣。小八貓（Hachiware）： 吉伊卡哇的最好朋友，頭上有獨特的八字形瀏海。個性開朗外向，擅長說話，經常擔任吉伊卡哇的「翻譯官」，總是貼心照顧他人。烏薩奇（Usagi / 兔兔）： 活力充沛的兔子，常發出「嗚呀咿哈——」的經典叫聲。個性古靈精怪、精力旺盛，戰鬥力極強，是三人組中的「智囊」與開心果。",
+      "description": "我們是記憶卡哇，我們是美光的戰隊。",
       "website": "https://chiikawa-wallpaper.com/zh-Hant",
       "contact": "0909099099",
       "booth": "A-8",
       "textSize": "s"
+    },
+    {
+      "name": "333 タピオカ専門店 大島店",
+      "category": "帥哥店",
+      "tagline": "我草快來喝飲料",
+      "image": "https://tb-static.uber.com/prod/image-proc/processed_images/e2972e9cbd7d00f68731668b523d94ef/9c4d3adb393f25706b737484dc73677e.jpeg",
+      "imageAlt": "333",
+      "description": "Contact the store directly ONLY concerning allergen information: store phone number: 07031973377 . / Note: Please contact Uber Eats Support in regards to any issues with your ongoing order. / For disclosure of merchant information in regards to the Specified Commercial Transaction Act Article 11, please contact the store or Uber Eats Support. We will be able to disclose the following information if requested: \"Legal Entity Name\", \"Representative Name (Corporate only)\", \"Legal Entity Address\" ,\"Phone Number\". For additional information please refer here.",
+      "website": "https://www.zohanlin.com/",
+      "contact": "0903152429",
+      "booth": "A8",
+      "textSize": ""
     }
   ]
 };
@@ -1106,6 +1198,8 @@ var DATA = loadData();
 if(!DATA.typography) DATA.typography = JSON.parse(JSON.stringify(EMBEDDED.typography || {
   font:'serif', bodyScale:1, titleScale:1, lineHeight:1.75, align:'justify'
 }));
+if(!DATA.intro) DATA.intro = JSON.parse(JSON.stringify(EMBEDDED.intro || { videoA:'', videoB:'', videoC:'' }));
+if(DATA.settings && DATA.settings.coverImage === undefined) DATA.settings.coverImage = '';
 
 function applyTypography(){
   var t = DATA.typography;
@@ -1133,7 +1227,13 @@ function roman(n){
    ============================================================ */
 function coverFace(){
   var s = DATA.settings;
-  return '<div class="face face--front cover">'
+  var hasImg = s.coverImage && s.coverImage.trim();
+  var imgHtml = hasImg
+    ? '<img class="coverimg" src="'+esc(s.coverImage.trim())+'" alt="'+esc(s.titleZh)+' 封面"'
+      +' onerror="this.closest(\'.cover\').classList.remove(\'cover--img\'); this.remove();" />'
+    : '';
+  return '<div class="face face--front cover'+(hasImg ? ' cover--img' : '')+'">'
+    + imgHtml
     +'<div class="frame" aria-hidden="true"></div>'
     +'<span class="clasp" aria-hidden="true"></span>'
     +'<svg class="sigil" viewBox="0 0 100 100" aria-hidden="true">'
@@ -1288,6 +1388,18 @@ function renderBook(){
     document.getElementById('fb-kicker').textContent = DATA.settings.kicker;
     fbT.innerHTML = esc(DATA.settings.titleEn) + '<span class="zh">' + esc(DATA.settings.titleZh) + '</span>';
     document.getElementById('fb-author').textContent = DATA.settings.author;
+    /* mirror the custom cover image on the intro flying book */
+    var fbInner = document.querySelector('#flybook .fb-inner');
+    var oldImg = fbInner.querySelector('.fb-coverimg');
+    if(oldImg) oldImg.remove();
+    if(DATA.settings.coverImage && DATA.settings.coverImage.trim()){
+      var fim = document.createElement('img');
+      fim.className = 'fb-coverimg';
+      fim.src = DATA.settings.coverImage.trim();
+      fim.alt = '';
+      fim.onerror = function(){ fim.remove(); };
+      fbInner.appendChild(fim);
+    }
   }
   return fronts.length;
 }
@@ -1454,9 +1566,134 @@ if(!reduce){
 }
 
 /* ============================================================
-   INTRO — envelope → flying book → FLIP handoff
+   INTRO — dispatcher: custom videos if set, else envelope FLIP
    ============================================================ */
+function introHandoff(){
+  document.body.classList.remove('intro-active');
+  document.body.classList.add('intro-handoff');
+  var intro = document.getElementById('intro');
+  intro.classList.add('lift');
+  setTimeout(function(){ intro.classList.add('gone'); }, 1150);
+}
+
 function runIntro(){
+  var iv = DATA.intro || {};
+  var hasVideo = (iv.videoA || iv.videoB || iv.videoC);
+  if(reduce){
+    document.body.classList.remove('intro-active');
+    document.body.classList.add('no-intro');
+    document.getElementById('intro').classList.add('gone');
+    return;
+  }
+  if(hasVideo) runVideoIntro(iv);
+  else runEnvelopeIntro();
+}
+
+/* ---------- video intro: A(entry) → B(idle loop) → click → C(exit) ---------- */
+function runVideoIntro(iv){
+  var intro   = document.getElementById('intro');
+  var hintEl  = document.getElementById('intro-hint');
+  var skipBtn = document.getElementById('intro-skip');
+
+  /* hide the envelope pieces */
+  ['env','flybook','ptx'].forEach(function(id){
+    var el = document.getElementById(id); if(el) el.style.display = 'none';
+  });
+
+  var stack = document.createElement('div');
+  stack.id = 'vstack';
+  intro.insertBefore(stack, hintEl);
+
+  var loadFailed = false;
+  function mk(src){
+    if(!src) return null;
+    var v = document.createElement('video');
+    v.src = src;
+    v.muted = true; v.playsInline = true;
+    v.setAttribute('muted',''); v.setAttribute('playsinline','');
+    v.preload = 'auto';
+    v.className = 'vlayer';
+    v.addEventListener('error', function(){ loadFailed = true; });
+    stack.appendChild(v);
+    return v;
+  }
+  var vA = mk(iv.videoA), vB = mk(iv.videoB), vC = mk(iv.videoC);
+  var layers = [vA, vB, vC].filter(Boolean);
+
+  var clickable = false, done = false;
+
+  function show(v){
+    layers.forEach(function(x){ x.style.opacity = (x === v) ? '1' : '0'; });
+  }
+
+  function handoff(){
+    if(done) return; done = true;
+    layers.forEach(function(v){ try{ v.pause(); }catch(e){} });
+    introHandoff();
+  }
+
+  function toLoop(){
+    if(done) return;
+    clickable = true;
+    if(vB && !loadFailed){
+      vB.loop = true;
+      try{ vB.currentTime = 0; }catch(e){}
+      var p = vB.play(); if(p && p.catch) p.catch(function(){});
+      show(vB);
+    }
+    /* hint pinned near the bottom for video mode */
+    hintEl.style.top = 'auto';
+    hintEl.style.bottom = '11%';
+    hintEl.classList.add('on');
+  }
+
+  function toExit(){
+    if(!clickable || done) return;
+    clickable = false;
+    hintEl.classList.remove('on');
+    if(vC && !loadFailed){
+      try{ vC.currentTime = 0; }catch(e){}
+      show(vC);
+      var p = vC.play();
+      if(p && p.catch) p.catch(function(){ handoff(); });
+      vC.addEventListener('ended', handoff);
+      /* start the fade slightly before the file ends so it feels continuous */
+      vC.addEventListener('timeupdate', function(){
+        if(vC.duration && vC.currentTime > vC.duration - 0.28) handoff();
+      });
+      if(vB) setTimeout(function(){ try{ vB.pause(); }catch(e){} }, 350);
+    } else {
+      handoff();
+    }
+  }
+
+  stack.addEventListener('click', toExit);
+  document.addEventListener('keydown', function(e){
+    if((e.key === 'Enter' || e.key === ' ') && clickable && !done &&
+       document.body.classList.contains('intro-active')){ e.preventDefault(); toExit(); }
+  });
+  skipBtn.addEventListener('click', function(e){ e.stopPropagation(); handoff(); });
+
+  /* safety: if nothing can play within 5s, drop the intro rather than trap visitors */
+  setTimeout(function(){
+    if(!done && !clickable && (loadFailed || layers.every(function(v){ return v.readyState < 2; }))){
+      handoff();
+    }
+  }, 5000);
+
+  /* start */
+  if(vA){
+    show(vA);
+    vA.addEventListener('ended', toLoop);
+    var pr = vA.play();
+    if(pr && pr.catch) pr.catch(function(){ toLoop(); });
+  } else {
+    toLoop();
+  }
+}
+
+/* ---------- built-in envelope intro (used when no videos are set) ---------- */
+function runEnvelopeIntro(){
   var intro   = document.getElementById('intro');
   var canvas  = document.getElementById('ptx');
   var env     = document.getElementById('env');
@@ -1874,6 +2111,36 @@ function initAdmin(){
   });
   fillTypeForm();
 
+  /* ---- cover image ---- */
+  function fillCoverForm(){ sf('s-cover', (DATA.settings && DATA.settings.coverImage) || ''); }
+  document.getElementById('s-cover-save').addEventListener('click', function(){
+    DATA.settings.coverImage = gf('s-cover').trim();
+    saveData(DATA);
+    bookApi.rebuild();
+    var b = document.getElementById('s-cover-save');
+    b.textContent = '已套用 ✓';
+    setTimeout(function(){ b.textContent = '套用封面'; }, 1600);
+  });
+  fillCoverForm();
+
+  /* ---- intro videos ---- */
+  function fillIntroForm(){
+    var iv = DATA.intro || {};
+    sf('i-a', iv.videoA || ''); sf('i-b', iv.videoB || ''); sf('i-c', iv.videoC || '');
+  }
+  document.getElementById('i-save').addEventListener('click', function(){
+    DATA.intro = {
+      videoA: gf('i-a').trim(),
+      videoB: gf('i-b').trim(),
+      videoC: gf('i-c').trim()
+    };
+    saveData(DATA);
+    var b = document.getElementById('i-save');
+    b.textContent = '已儲存 ✓ 重新整理頁面預覽';
+    setTimeout(function(){ b.textContent = '儲存進場動畫設定'; }, 2400);
+  });
+  fillIntroForm();
+
   /* ---- deploy: one-click download of full index.html ---- */
   /* markers built by concatenation so these literals never match themselves */
   var M_START = '/* ==== BOOK' + ' DATA ==== */';
@@ -1952,7 +2219,7 @@ function initAdmin(){
     DATA = JSON.parse(JSON.stringify(EMBEDDED));
     if(!DATA.typography) DATA.typography = { font:'serif', bodyScale:1, titleScale:1, lineHeight:1.75, align:'justify' };
     applyTypography();
-    renderList(); fillVenueForm(); fillTypeForm();
+    renderList(); fillVenueForm(); fillTypeForm(); fillIntroForm(); fillCoverForm();
     bookApi.rebuild();
   });
 }
@@ -1965,44 +2232,6 @@ initAdmin();
 runIntro();
 
 })();
-</script>
-<!-- Code injected by live-server -->
-<script>
-	// <![CDATA[  <-- For SVG support
-	if ('WebSocket' in window) {
-		(function () {
-			function refreshCSS() {
-				var sheets = [].slice.call(document.getElementsByTagName("link"));
-				var head = document.getElementsByTagName("head")[0];
-				for (var i = 0; i < sheets.length; ++i) {
-					var elem = sheets[i];
-					var parent = elem.parentElement || head;
-					parent.removeChild(elem);
-					var rel = elem.rel;
-					if (elem.href && typeof rel != "string" || rel.length == 0 || rel.toLowerCase() == "stylesheet") {
-						var url = elem.href.replace(/(&|\?)_cacheOverride=\d+/, '');
-						elem.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cacheOverride=' + (new Date().valueOf());
-					}
-					parent.appendChild(elem);
-				}
-			}
-			var protocol = window.location.protocol === 'http:' ? 'ws://' : 'wss://';
-			var address = protocol + window.location.host + window.location.pathname + '/ws';
-			var socket = new WebSocket(address);
-			socket.onmessage = function (msg) {
-				if (msg.data == 'reload') window.location.reload();
-				else if (msg.data == 'refreshcss') refreshCSS();
-			};
-			if (sessionStorage && !sessionStorage.getItem('IsThisFirstTime_Log_From_LiveServer')) {
-				console.log('Live reload enabled.');
-				sessionStorage.setItem('IsThisFirstTime_Log_From_LiveServer', true);
-			}
-		})();
-	}
-	else {
-		console.error('Upgrade your browser. This Browser is NOT supported WebSocket for Live-Reloading.');
-	}
-	// ]]>
 </script>
 </body>
 </html>
